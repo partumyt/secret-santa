@@ -11,11 +11,10 @@ def read_file(filename: str) -> dict:
     :param filename: Name of the file
     :return: Dictionary with player data
     """
-    output = {}
+    output = []
     with open(filename, "r", encoding="utf-8") as file:
-        next(file)
         for line in file:
-            line = line.strip().split("|")
+            line = line.strip().split(",")
             line[2] = line[2].replace("Чоловік", "male").replace("Жінка", "female")
             line[3] = line[3].replace("Комп'ютерні науки", "CS").replace("IT та бізнес аналітика", "BA") \
                 .replace("Право", "Law").replace("ЕПЕ", "EPE").replace("Історія", "History") \
@@ -23,9 +22,9 @@ def read_file(filename: str) -> dict:
                 .replace("Соціологія", "Sociology").replace("Соціальна робота", "SW") \
                 .replace("Психологія", "Psychology")
             try:
-                output.setdefault((f"{line[0]} {line[1]}", line[2], line[3]), (line[4], line[5], line[6], line[7]))
+                output.append((f"{line[0]} {line[1]}", line[2], line[3]))
             except IndexError:
-                output.setdefault((f"{line[0]} {line[1]}", line[2], line[3]), (line[4], line[5], line[6]))
+                output.append((f"{line[0]} {line[1]}", line[2], line[3]))
         return output
 
 
@@ -41,8 +40,8 @@ def is_valid_pair(giver, receiver, previous_pairs, players):
     """
     if giver == receiver:
         return False
-    giver_gender = players[giver][1]
-    receiver_gender = players[receiver][1]
+    giver_gender = giver[1]
+    receiver_gender = receiver[1]
     if giver_gender == receiver_gender:
         return False
     if (giver[0], receiver[0]) in previous_pairs:
@@ -50,29 +49,47 @@ def is_valid_pair(giver, receiver, previous_pairs, players):
     return True
 
 
-def shuffle_pairs(players: dict) -> dict:
+def shuffle_pairs(players: list, max_attempts: int = 1000) -> list:
     """
     Shuffle players to create pairs for Secret Santa with specific conditions.
 
-    :param players: Dictionary of players
-    :return: Dictionary with pairs of giver and receiver
+    :param players: List of players
+    :param max_attempts: Maximum attempts to create valid pairs
+    :return: List with pairs of giver and receiver, or empty if unsuccessful
     """
-    givers = list(players.keys())
-    receivers = givers.copy()
-    pairs = {}
-    previous_pairs = set()
+    for attempt in range(max_attempts):
+        givers = players[:]
+        receivers = givers.copy()
+        pairs = []
+        previous_pairs = set()
 
-    for giver in givers:
-        possible_receivers = [receiver for receiver in receivers if
-                              is_valid_pair(giver, receiver, previous_pairs, players)]
-        if not possible_receivers:
-            return shuffle_pairs(players)
-        receiver = random.choice(possible_receivers)
-        pairs[giver] = receiver
-        receivers.remove(receiver)
-        previous_pairs.add((giver[0], receiver[0]))
+        for giver in givers:
+            possible_receivers = [rec for rec in receivers if
+                                  is_valid_pair(giver, rec, previous_pairs, players)]
+            if not possible_receivers:
+                break
+            receiver = random.choice(possible_receivers)
+            pairs.append((giver, receiver))
+            receivers.remove(receiver)
+            previous_pairs.add((giver[0], receiver[0]))
+    
+    missing = []
+    paired_players = {pair[0] for pair in pairs}.union({pair[1] for pair in pairs})
 
+    for player in players:
+        if player not in paired_players:
+            missing.append(player)
+
+    print(pairs)
+    print("\n")
+    print("\n")
+    print(missing)
+        
     return pairs
+
+    # If all attempts fail, return an empty list or a failure message
+    print("Unable to generate valid pairs within the maximum number of attempts.")
+    return []
 
 
 def write_pairs_to_file(pairs: dict, players: dict, filename: str) -> None:
@@ -91,7 +108,7 @@ def write_pairs_to_file(pairs: dict, players: dict, filename: str) -> None:
             receiver_info = list(players[receiver])
             while len(receiver_info) < 4:
                 receiver_info.append("")
-            giver_info = f"{giver_name} -> {receiver_name} | {receiver_info[2]} | {receiver_info[0]} | {receiver_info[1]} | {receiver_info[2]} | {receiver_info[3]}"
+            giver_info = f"{giver_name} -> {receiver_name}"
             file.write(giver_info + "\n")
 
 
@@ -101,8 +118,7 @@ def main() -> None:
     """
     players = read_file("data.csv")
     pairs = shuffle_pairs(players)
-    write_pairs_to_file(pairs, players, "secret_santa_pairs.csv")
-    print("Pairs generated and saved to 'secret_santa_pairs.csv'.")
-
+    # write_pairs_to_file(pairs, players, "secret_santa_pairs.csv")
+    # print("Pairs generated and saved to 'secret_santa_pairs.csv'.")
 
 main()
