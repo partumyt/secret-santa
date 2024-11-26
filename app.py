@@ -16,7 +16,7 @@ def secret_santa_pairing(filename: str, max_attempts: int = 1000) -> list:
     with open(filename, "r", encoding="utf-8") as file:
         for line in file:
             line = line.strip().split(",")
-            name, gender, program = f"{line[0]} {line[1]}", line[2], line[3]
+            name, gender, program = f"{line[0]}", line[1], line[2]
             players.append((name, gender, program))
     
     # Attempt pairing with prioritized conditions
